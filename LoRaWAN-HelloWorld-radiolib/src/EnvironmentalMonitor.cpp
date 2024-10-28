@@ -32,6 +32,13 @@ RTC_DATA_ATTR uint16_t bootCount = 0;
 #include "GPS.h"
 #include "LoRaWAN.hpp"
 
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+#define ONE_WIRE_BUS 12  
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
 static GAIT::LoRaWAN<RADIOLIB_LORA_MODULE> loRaWAN(RADIOLIB_LORA_REGION,
                                                    RADIOLIB_LORAWAN_JOIN_EUI,
                                                    RADIOLIB_LORAWAN_DEV_EUI,
@@ -93,14 +100,36 @@ void setup() {
     Serial.println(F("[APP] Aquire data and construct LoRaWAN uplink"));
 
     gps.setup();
+    sensors.begin();
 
     std::string uplinkPayload = RADIOLIB_LORAWAN_PAYLOAD;
     uint8_t fPort = 221;
 
+<<<<<<< Updated upstream
     if (gps.isValid()) {
         fPort = 1; // 1 is location
         uplinkPayload = std::to_string(gps.getLatitude()) + "," + std::to_string(gps.getLongitude()) + "," +
                         std::to_string(gps.getAltitude()) + "," + std::to_string(gps.getHdop());
+=======
+    #define SENSOR_COUNT 2
+    switch (bootCount % SENSOR_COUNT)
+    {
+    case 0:
+        if (gps.isValid()) {
+            fPort = 1; // 1 is location
+            uplinkPayload = std::to_string(gps.getLatitude()) + "," + std::to_string(gps.getLongitude()) + "," +
+                            std::to_string(gps.getAltitude()) + "," + std::to_string(gps.getHdop());
+        }
+        break;
+    case 1:
+        sensors.requestTemperatures(); // Request temperature from DS18B20
+        float temperature = sensors.getTempCByIndex(0);
+        if (temperature != DEVICE_DISCONNECTED_C) { // Check if the reading is valid
+            fPort = 2; // Set port for temperature data
+            uplinkPayload = std::to_string(temperature);
+        }
+        break;
+>>>>>>> Stashed changes
     }
 
     loRaWAN.setUplinkPayload(fPort, uplinkPayload);
