@@ -102,16 +102,20 @@ void setup() {
     gps.setup();
     sensors.begin();
 
+
     std::string uplinkPayload = RADIOLIB_LORAWAN_PAYLOAD;
     uint8_t fPort = 221;
 
-<<<<<<< Updated upstream
-    if (gps.isValid()) {
-        fPort = 1; // 1 is location
-        uplinkPayload = std::to_string(gps.getLatitude()) + "," + std::to_string(gps.getLongitude()) + "," +
-                        std::to_string(gps.getAltitude()) + "," + std::to_string(gps.getHdop());
-=======
-    #define SENSOR_COUNT 2
+    #define SENSOR_COUNT 4
+    float temperature;
+    int analogValue;
+    float voltage;
+    float pH;
+    int tdsValue; 
+    float tdsVoltage; 
+    float tds;
+
+
     switch (bootCount % SENSOR_COUNT)
     {
     case 0:
@@ -123,17 +127,35 @@ void setup() {
         break;
     case 1:
         sensors.requestTemperatures(); // Request temperature from DS18B20
-        float temperature = sensors.getTempCByIndex(0);
+        temperature = sensors.getTempCByIndex(0);
         if (temperature != DEVICE_DISCONNECTED_C) { // Check if the reading is valid
             fPort = 2; // Set port for temperature data
             uplinkPayload = std::to_string(temperature);
         }
         break;
->>>>>>> Stashed changes
+    case 2:
+        analogValue = analogRead(34); // Read the analog value for pH
+        voltage = analogValue * (3.3 / 4095.0); // Convert ADC value to voltage
+        pH = 3.5 * voltage + 0.15; // Example conversion formula, adjust based on calibration
+        if (pH >= 0.0 && pH <= 14.0) { // Check if pH value is within a realistic range
+            fPort = 3; // Set port for pH data
+            uplinkPayload = std::to_string(pH) +","+std::to_string(voltage); 
+        }
+        break;
+    case 3:
+        tdsValue = analogRead(35); // Read the TDS sensor analog value
+        tdsVoltage = tdsValue * (3.3 / 4095.0); // Convert to voltage
+        tds = (tdsVoltage / (1.0 + 0.02 * (temperature - 25.0))) * 133.42; // Conversion formula
+        if (tds >= 0.0) { // Check if TDS value is non-negative
+            fPort = 4; // TDS data
+            uplinkPayload = std::to_string(tds); // Send TDS in ppm
+        }
+        break;
     }
 
     loRaWAN.setUplinkPayload(fPort, uplinkPayload);
 }
+
 
 void loop() {
     loRaWAN.loop();
